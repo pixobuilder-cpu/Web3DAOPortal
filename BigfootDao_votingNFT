@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+// Importations strictes en version stable 4.9.0
+import "@openzeppelin/contracts@4.9.0/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts@4.9.0/token/ERC721/extensions/ERC721Votes.sol";
+import "@openzeppelin/contracts@4.9.0/access/Ownable.sol";
+import "@openzeppelin/contracts@4.9.0/utils/Base64.sol";
+import "@openzeppelin/contracts@4.9.0/utils/Strings.sol";
+
+/**
+ * @title BigfootDAO_VotingNFT
+ * @dev NFT ERC721 avec métadonnées générées on-chain, compatible v4.9.0 et module Governor (Zodiac)
+ */
+contract BigfootDAO_VotingNFT is ERC721, EIP712, ERC721Votes, Ownable {
+    using Strings for uint256;
+    uint256 private _nextTokenId;
+
+    // Votre CID IPFS direct pour l'image du NFT
+    string private constant IMAGE_CID = "bafybeig7zc6xgscet7tjpw5kyukll5idgquhs4nidogg3zzf2uzi4key5e";
+
+    // En v4.9.0, Ownable ne prend pas d'argument msg.sender dans le constructeur
+    constructor() 
+        ERC721("bigfootdaoNFT", "bftvNFT") 
+        EIP712("bigfootdaoNFT", "1") 
+    {}
+
+    /**
+     * @dev Fonction pour émettre un NFT de vote à un membre.
+     */
+    function mintVotingNFT(address to) public onlyOwner {
+        uint256 tokenId = _nextTokenId;
+        _nextTokenId++;
+        _safeMint(to, tokenId);
+    }
+
+    /**
+     * @dev Génère dynamiquement le JSON en Base64.
+     */
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+
+        bytes memory dataURI = abi.encodePacked(
+            '{',
+                '"name": "bigfootdaoNFT #', tokenId.toString(), '",',
+                '"description": "NFT de gouvernance officiel pour Bigfoot DAO. Donne un droit de vote sur le module Governor.",',
+                '"image": "ipfs://', IMAGE_CID, '"',
+            '}'
+        );
+
+        return string(abi.encodePacked("data:application/json;base64,", Base64.encode(dataURI)));
+    }
+
+    // --- Fonctions de Surcharge Obligatoires pour la Version 4.9.0 ---
+
+    // En v4.9.0, c'est cette fonction qui gère l'historique des votes lors des transferts
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal override(ERC721, ERC721Votes) {
+        super._afterTokenTransfer(from, to, firstTokenId, batchSize);
+    }
+}
